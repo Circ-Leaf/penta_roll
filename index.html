@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ペンタロール - Pentaroll</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- メインメニュー -->
+    <div id="mainMenu" class="screen">
+        <div class="menu-container">
+            <h1 class="game-title">⚔️ ペンタロール</h1>
+            <p class="game-subtitle">5つのボールを並べて勝利しよう！</p>
+            
+            <div class="menu-buttons">
+                <button class="menu-btn" onclick="startPlayerVsPlayer()">
+                    👥 プレイヤー同士で対戦
+                </button>
+                <button class="menu-btn" onclick="startPlayerVsCPU()">
+                    🤖 CPUと対戦
+                </button>
+                <button class="menu-btn" onclick="showRules()">
+                    📋 ルール確認
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ルール画面 -->
+    <div id="rulesScreen" class="screen hidden">
+        <div class="rules-container">
+            <h2>⚔️ ペンタロールのルール</h2>
+            <div class="rules-content">
+                <h3>📏 基本ルール</h3>
+                <ul>
+                    <li><strong>プレイ人数：</strong> 2人</li>
+                    <li><strong>ゲームボード：</strong> 6×6マス</li>
+                    <li><strong>目標：</strong> 自分のボールを縦・横・斜めのいずれかに5個並べる</li>
+                </ul>
+
+                <h3>🎯 遊び方</h3>
+                <ol>
+                    <li>プレイヤーは交互に自分の色のボールをゲームボードの<strong>端</strong>に置きます</li>
+                    <li>置きたい場所にすでにボールがある場合は、そのボールを1マス分転がして（押し出して）自分のボールを置きます</li>
+                    <li>角の位置では、3つの方向から押し出す方向を選択できます</li>
+                    <li>一番最初に自分のボールを5個並べたプレイヤーが勝利！</li>
+                </ol>
+
+                <h3>🎪 特殊ルール</h3>
+                <ul>
+                    <li>ボールは盤の端（20か所）からのみ配置可能</li>
+                    <li>複数のボールがある場合は、連鎖的に押し出されます</li>
+                    <li>ゲームボードからボールが飛び出ることはありません</li>
+                </ul>
+            </div>
+            <button class="back-btn" onclick="backToMenu()">🔙 メインメニューに戻る</button>
+        </div>
+    </div>
+
+    <!-- ゲーム画面 -->
+    <div id="gameScreen" class="screen hidden">
+        <div class="game-container">
+            <div class="game-header">
+                <div class="player-info">
+                    <div class="player player1">
+                        <div class="player-ball red"></div>
+                        <span>プレイヤー1</span>
+                    </div>
+                    <div class="turn-indicator">
+                        <span id="currentPlayer">プレイヤー1のターン</span>
+                    </div>
+                    <div class="player player2">
+                        <div class="player-ball blue"></div>
+                        <span id="player2Name">プレイヤー2</span>
+                    </div>
+                </div>
+                <button class="back-btn" onclick="backToMenu()">🔙 メインメニュー</button>
+            </div>
+
+            <div class="game-board-container">
+                <canvas id="gameCanvas" width="800" height="600"></canvas>
+                
+                <!-- 方向選択モーダル -->
+                <div id="directionModal" class="modal hidden">
+                    <div class="modal-content">
+                        <h3>押し出す方向を選択してください</h3>
+                        <div class="direction-buttons">
+                            <button id="directionUp" class="direction-btn">⬆️</button>
+                            <button id="directionRight" class="direction-btn">➡️</button>
+                            <button id="directionDown" class="direction-btn">⬇️</button>
+                            <button id="directionLeft" class="direction-btn">⬅️</button>
+                            <button id="directionUpRight" class="direction-btn">↗️</button>
+                            <button id="directionDownRight" class="direction-btn">↘️</button>
+                            <button id="directionDownLeft" class="direction-btn">↙️</button>
+                            <button id="directionUpLeft" class="direction-btn">↖️</button>
+                        </div>
+                        <button class="cancel-btn" onclick="cancelMove()">キャンセル</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 結果画面 -->
+    <div id="resultScreen" class="screen hidden">
+        <div class="result-container">
+            <h2 id="resultTitle">🎉 勝利！</h2>
+            <p id="resultMessage">プレイヤー1の勝利です！</p>
+            
+            <div class="final-board">
+                <h3>最終盤面</h3>
+                <canvas id="finalBoardCanvas" width="400" height="300"></canvas>
+            </div>
+            
+            <div class="result-buttons">
+                <button class="menu-btn" onclick="restartGame()">🔄 もう一度プレイ</button>
+                <button class="menu-btn" onclick="backToMenu()">🏠 メインメニュー</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="game.js"></script>
+</body>
+</html> 
