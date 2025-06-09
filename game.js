@@ -34,6 +34,12 @@ class PentarollGame {
             canvas.parentNode.replaceChild(newCanvas, canvas);
         }
         
+        // Windowイベントリスナーを削除
+        if (this.resizeHandler) {
+            window.removeEventListener('resize', this.resizeHandler);
+            window.removeEventListener('orientationchange', this.resizeHandler);
+        }
+        
         // 全てのキャンバスをクリア
         const canvases = ['gameCanvas', 'finalBoardCanvas'];
         canvases.forEach(canvasId => {
@@ -53,10 +59,29 @@ class PentarollGame {
         this.canvas = document.getElementById('gameCanvas');
         this.ctx = this.canvas.getContext('2d');
         
+        // Canvas要素の表示サイズを取得
+        const rect = this.canvas.getBoundingClientRect();
+        
+        // Canvasの内部解像度と表示サイズの関係を考慮
+        const canvasWidth = this.canvas.width;
+        const canvasHeight = this.canvas.height;
+        
+        // セルサイズを動的に計算（Canvas内部解像度に基づく）
+        const availableWidth = canvasWidth * 0.8; // マージンを考慮
+        const availableHeight = canvasHeight * 0.8; // マージンを考慮
+        this.cellSize = Math.min(availableWidth / 6, availableHeight / 6);
+        
         // キャンバスサイズに基づいて盤面を中央に配置
         const boardSize = this.cellSize * 6; // 6x6のボードサイズ
-        this.boardOffset.x = (this.canvas.width - boardSize) / 2;
-        this.boardOffset.y = (this.canvas.height - boardSize) / 2;
+        this.boardOffset.x = (canvasWidth - boardSize) / 2;
+        this.boardOffset.y = (canvasHeight - boardSize) / 2;
+        
+        console.log('Canvas initialized:', {
+            canvasSize: { width: canvasWidth, height: canvasHeight },
+            displaySize: { width: rect.width, height: rect.height },
+            cellSize: this.cellSize,
+            boardOffset: this.boardOffset
+        });
         
         // 完全にキャンバスをクリア
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
@@ -75,6 +100,15 @@ class PentarollGame {
         this.canvas.addEventListener('touchmove', (e) => {
             e.preventDefault();
         });
+        
+        // 画面サイズ変更時の対応
+        this.resizeHandler = () => {
+            setTimeout(() => {
+                this.initializeCanvas();
+            }, 100);
+        };
+        window.addEventListener('resize', this.resizeHandler);
+        window.addEventListener('orientationchange', this.resizeHandler);
     }
 
     // 端の位置かどうかを判定
@@ -214,6 +248,11 @@ class PentarollGame {
     getCanvasCoordinates(clientX, clientY) {
         const rect = this.canvas.getBoundingClientRect();
         
+        // デバッグ用ログ
+        console.log('Canvas rect:', rect);
+        console.log('Canvas dimensions:', this.canvas.width, 'x', this.canvas.height);
+        console.log('Client coordinates:', clientX, clientY);
+        
         // Canvas要素の実際の表示サイズを取得
         const displayWidth = rect.width;
         const displayHeight = rect.height;
@@ -226,9 +265,15 @@ class PentarollGame {
         const scaleX = canvasWidth / displayWidth;
         const scaleY = canvasHeight / displayHeight;
         
+        console.log('Scale factors:', scaleX, scaleY);
+        
         // クリック/タッチ位置を Canvas の内部座標系に変換
         const x = (clientX - rect.left) * scaleX;
         const y = (clientY - rect.top) * scaleY;
+        
+        console.log('Calculated coordinates:', x, y);
+        console.log('Board offset:', this.boardOffset);
+        console.log('Cell size:', this.cellSize);
         
         return { x, y };
     }
@@ -240,12 +285,34 @@ class PentarollGame {
             return;
         }
         
+        // デバッグ用：タッチした位置に赤い点を描画
+        this.ctx.fillStyle = 'red';
+        this.ctx.beginPath();
+        this.ctx.arc(x, y, 5, 0, 2 * Math.PI);
+        this.ctx.fill();
+        
         const col = Math.floor((x - this.boardOffset.x) / this.cellSize);
         const row = Math.floor((y - this.boardOffset.y) / this.cellSize);
         
+        console.log('Position calculation:', {
+            input: { x, y },
+            boardOffset: this.boardOffset,
+            cellSize: this.cellSize,
+            calculated: { row, col },
+            isEdge: this.isEdgePosition(row, col)
+        });
+        
         if (row >= 0 && row < 6 && col >= 0 && col < 6 && this.isEdgePosition(row, col)) {
+            console.log('Valid position clicked:', row, col);
             this.handlePositionClick(row, col);
+        } else {
+            console.log('Invalid position clicked:', row, col);
         }
+        
+        // デバッグ用の点を2秒後に消去
+        setTimeout(() => {
+            this.drawBoard();
+        }, 2000);
     }
 
     // 位置クリック処理（修正版）
@@ -283,8 +350,23 @@ class PentarollGame {
         
         // ボールの画面上の位置を計算
         const rect = this.canvas.getBoundingClientRect();
-        const ballX = rect.left + this.boardOffset.x + col * this.cellSize + this.cellSize / 2;
-        const ballY = rect.top + this.boardOffset.y + row * this.cellSize + this.cellSize / 2;
+        
+        // Canvas内部座標系でのボール位置を計算
+        const ballCanvasX = this.boardOffset.x + col * this.cellSize + this.cellSize / 2;
+        const ballCanvasY = this.boardOffset.y + row * this.cellSize + this.cellSize / 2;
+        
+        // Canvas座標を画面座標に変換
+        const displayWidth = rect.width;
+        const displayHeight = rect.height;
+        const canvasWidth = this.canvas.width;
+        const canvasHeight = this.canvas.height;
+        const scaleX = displayWidth / canvasWidth;
+        const scaleY = displayHeight / canvasHeight;
+        
+        const ballX = rect.left + ballCanvasX * scaleX;
+        const ballY = rect.top + ballCanvasY * scaleY;
+        
+        console.log('Direction button ball position:', ballX, ballY); // デバッグ用
         
         // オーバーレイを作成（ボタン以外のクリックでキャンセル）
         const overlay = document.createElement('div');
