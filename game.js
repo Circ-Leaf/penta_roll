@@ -348,25 +348,46 @@ class PentarollGame {
         this.showingArrows = true;
         this.removeDirectionButtons(); // 既存のボタンを削除
         
-        // ボールの画面上の位置を計算
+        // ボールの画面上の位置を計算（修正版）
         const rect = this.canvas.getBoundingClientRect();
         
         // Canvas内部座標系でのボール位置を計算
         const ballCanvasX = this.boardOffset.x + col * this.cellSize + this.cellSize / 2;
         const ballCanvasY = this.boardOffset.y + row * this.cellSize + this.cellSize / 2;
         
-        // Canvas座標を画面座標に変換
-        const displayWidth = rect.width;
-        const displayHeight = rect.height;
+        // Canvas座標を画面座標に変換（より正確な変換）
         const canvasWidth = this.canvas.width;
         const canvasHeight = this.canvas.height;
+        
+        // Canvas要素の実際の表示サイズ
+        const displayWidth = rect.width;
+        const displayHeight = rect.height;
+        
+        // スケール比率を計算
         const scaleX = displayWidth / canvasWidth;
         const scaleY = displayHeight / canvasHeight;
         
-        const ballX = rect.left + ballCanvasX * scaleX;
-        const ballY = rect.top + ballCanvasY * scaleY;
+        // 画面座標を計算
+        const ballX = rect.left + (ballCanvasX * scaleX);
+        const ballY = rect.top + (ballCanvasY * scaleY);
         
-        console.log('Direction button ball position:', ballX, ballY); // デバッグ用
+        // ページスクロール位置を考慮
+        const scrollX = window.pageXOffset || document.documentElement.scrollLeft;
+        const scrollY = window.pageYOffset || document.documentElement.scrollTop;
+        
+        const finalBallX = ballX + scrollX;
+        const finalBallY = ballY + scrollY;
+        
+        console.log('Direction button positioning:', {
+            rect: rect,
+            canvasSize: { width: canvasWidth, height: canvasHeight },
+            displaySize: { width: displayWidth, height: displayHeight },
+            scale: { x: scaleX, y: scaleY },
+            ballCanvas: { x: ballCanvasX, y: ballCanvasY },
+            ballScreen: { x: ballX, y: ballY },
+            finalBall: { x: finalBallX, y: finalBallY },
+            scroll: { x: scrollX, y: scrollY }
+        });
         
         // オーバーレイを作成（ボタン以外のクリックでキャンセル）
         const overlay = document.createElement('div');
@@ -397,14 +418,14 @@ class PentarollGame {
             button.textContent = this.getDirectionSymbol(direction);
             button.className = 'direction-btn';
             button.style.cssText = `
-                position: fixed;
-                width: 70px;
-                height: 70px;
+                position: absolute;
+                width: 60px;
+                height: 60px;
                 border: none;
                 border-radius: 50%;
                 background: linear-gradient(145deg, #667eea 0%, #764ba2 100%);
                 color: #ffffff;
-                font-size: 24px;
+                font-size: 20px;
                 font-weight: bold;
                 cursor: pointer;
                 z-index: 1000;
@@ -424,13 +445,28 @@ class PentarollGame {
                 animation: bounceIn 0.5s ease forwards;
             `;
             
-            // ボタンの位置を設定
+            // ボタンの位置を設定（修正版）
             const [dRow, dCol] = this.getDirectionVector(direction);
-            const btnX = ballX + dCol * 90 - 35; // ボタンサイズが大きくなったので調整
-            const btnY = ballY + dRow * 90 - 35; // ボタンサイズが大きくなったので調整
             
-            button.style.left = btnX + 'px';
-            button.style.top = btnY + 'px';
+            // より大きな距離でボタンを配置（スマホでタッチしやすくするため）
+            const buttonDistance = Math.min(80, Math.min(displayWidth, displayHeight) * 0.15);
+            
+            const btnX = finalBallX + dCol * buttonDistance - 30; // ボタン幅の半分
+            const btnY = finalBallY + dRow * buttonDistance - 30; // ボタン高さの半分
+            
+            // 画面外に出ないように調整
+            const adjustedBtnX = Math.max(10, Math.min(btnX, window.innerWidth - 70));
+            const adjustedBtnY = Math.max(10, Math.min(btnY, window.innerHeight - 70));
+            
+            button.style.left = adjustedBtnX + 'px';
+            button.style.top = adjustedBtnY + 'px';
+            
+            console.log(`Button ${direction}:`, {
+                direction: [dRow, dCol],
+                distance: buttonDistance,
+                calculated: { x: btnX, y: btnY },
+                adjusted: { x: adjustedBtnX, y: adjustedBtnY }
+            });
             
             // ホバー効果
             button.addEventListener('mouseenter', () => {
