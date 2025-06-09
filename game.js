@@ -64,7 +64,17 @@ class PentarollGame {
     }
 
     setupEventListeners() {
+        // タッチイベントとクリックイベントの両方に対応
         this.canvas.addEventListener('click', (e) => this.handleCanvasClick(e));
+        this.canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault(); // スクロールなどのデフォルト動作を防ぐ
+            this.handleCanvasTouch(e);
+        });
+        
+        // タッチ中のスクロールを防ぐ
+        this.canvas.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+        });
     }
 
     // 端の位置かどうかを判定
@@ -180,11 +190,52 @@ class PentarollGame {
         if (this.animating || this.gameOver || this.cpuThinking) return;
         if (this.gameMode === 'pvc' && this.currentPlayer === 2) return; // CPU のターン中
 
+        const coords = this.getCanvasCoordinates(e.clientX, e.clientY);
+        this.handlePositionInput(coords.x, coords.y);
+    }
+
+    // タッチイベント処理
+    handleCanvasTouch(e) {
+        // 操作不可の条件をチェック
+        if (this.animating || this.gameOver || this.cpuThinking) return;
+        if (this.gameMode === 'pvc' && this.currentPlayer === 2) return; // CPU のターン中
+
+        // 方向選択中の場合はタッチを無視（ボタンで選択）
+        if (this.showingArrows) {
+            return;
+        }
+
+        const touch = e.touches[0];
+        const coords = this.getCanvasCoordinates(touch.clientX, touch.clientY);
+        this.handlePositionInput(coords.x, coords.y);
+    }
+
+    // Canvas座標を正確に計算
+    getCanvasCoordinates(clientX, clientY) {
         const rect = this.canvas.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const y = e.clientY - rect.top;
         
-        // 方向選択中の場合はクリックを無視（ボタンで選択）
+        // Canvas要素の実際の表示サイズを取得
+        const displayWidth = rect.width;
+        const displayHeight = rect.height;
+        
+        // Canvas要素の内部解像度を取得
+        const canvasWidth = this.canvas.width;
+        const canvasHeight = this.canvas.height;
+        
+        // 表示サイズと内部解像度の比率を計算
+        const scaleX = canvasWidth / displayWidth;
+        const scaleY = canvasHeight / displayHeight;
+        
+        // クリック/タッチ位置を Canvas の内部座標系に変換
+        const x = (clientX - rect.left) * scaleX;
+        const y = (clientY - rect.top) * scaleY;
+        
+        return { x, y };
+    }
+
+    // 位置入力の共通処理
+    handlePositionInput(x, y) {
+        // 方向選択中の場合は入力を無視（ボタンで選択）
         if (this.showingArrows) {
             return;
         }
@@ -265,8 +316,8 @@ class PentarollGame {
             button.className = 'direction-btn';
             button.style.cssText = `
                 position: fixed;
-                width: 60px;
-                height: 60px;
+                width: 70px;
+                height: 70px;
                 border: none;
                 border-radius: 50%;
                 background: linear-gradient(145deg, #667eea 0%, #764ba2 100%);
@@ -284,14 +335,17 @@ class PentarollGame {
                 align-items: center;
                 justify-content: center;
                 user-select: none;
+                -webkit-user-select: none;
+                -webkit-touch-callout: none;
+                touch-action: manipulation;
                 transform: scale(0.8);
                 animation: bounceIn 0.5s ease forwards;
             `;
             
             // ボタンの位置を設定
             const [dRow, dCol] = this.getDirectionVector(direction);
-            const btnX = ballX + dCol * 80 - 30; // ボタンの中心調整
-            const btnY = ballY + dRow * 80 - 30; // ボタンの中心調整
+            const btnX = ballX + dCol * 90 - 35; // ボタンサイズが大きくなったので調整
+            const btnY = ballY + dRow * 90 - 35; // ボタンサイズが大きくなったので調整
             
             button.style.left = btnX + 'px';
             button.style.top = btnY + 'px';
@@ -324,6 +378,19 @@ class PentarollGame {
                 console.log('矢印ボタンクリック:', direction); // デバッグ用
                 
                 // クリックアニメーション
+                button.style.transform = 'scale(0.95)';
+                setTimeout(() => {
+                    this.selectDirection(direction);
+                }, 100);
+            });
+
+            // タッチイベントを追加
+            button.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('矢印ボタンタッチ:', direction); // デバッグ用
+                
+                // タッチアニメーション
                 button.style.transform = 'scale(0.95)';
                 setTimeout(() => {
                     this.selectDirection(direction);
