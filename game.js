@@ -612,6 +612,7 @@ class PentarollGame {
             return newRow >= 0 && newRow < 6 && newCol >= 0 && newCol < 6;
         });
         
+        
         if (!canMove) {
             console.log('移動先がボード外のため移動をキャンセル');
             this.animating = false;
