@@ -234,11 +234,6 @@ class PentarollGame {
         if (this.animating || this.gameOver || this.cpuThinking) return;
         if (this.gameMode === 'pvc' && this.currentPlayer === 2) return; // CPU のターン中
 
-        // 方向選択中の場合はタッチを無視（ボタンで選択）
-        if (this.showingArrows) {
-            return;
-        }
-
         const touch = e.touches[0];
         const coords = this.getCanvasCoordinates(touch.clientX, touch.clientY);
         this.handlePositionInput(coords.x, coords.y);
@@ -343,67 +338,47 @@ class PentarollGame {
         }
     }
 
-    // 方向選択HTMLボタンを表示
+    // 方向選択HTMLボタンを表示（座標修正版）
     showDirectionButtons(row, col) {
         this.showingArrows = true;
         this.removeDirectionButtons(); // 既存のボタンを削除
         
-        // Canvas要素の詳細情報を取得
-        const canvas = this.canvas;
-        const rect = canvas.getBoundingClientRect();
+        // Canvas要素のbounding rectを取得
+        const rect = this.canvas.getBoundingClientRect();
         
-        console.log('Canvas詳細情報:', {
-            rect: rect,
-            canvasSize: { width: canvas.width, height: canvas.height },
-            style: { width: canvas.style.width, height: canvas.style.height },
-            computed: getComputedStyle(canvas)
-        });
+        // ボールの中心位置（Canvas内部座標系）
+        const ballCanvasX = this.boardOffset.x + col * this.cellSize + this.cellSize / 2;
+        const ballCanvasY = this.boardOffset.y + row * this.cellSize + this.cellSize / 2;
         
-        // ゲーム座標からCanvas座標へ変換
-        const cellSize = this.cellSize;
-        const boardOffsetX = this.boardOffset.x;
-        const boardOffsetY = this.boardOffset.y;
+        // Canvas内部座標を画面座標に変換
+        const scaleX = rect.width / this.canvas.width;
+        const scaleY = rect.height / this.canvas.height;
         
-        // ボールの中心位置（Canvas座標系）
-        const ballCenterX = boardOffsetX + col * cellSize + cellSize / 2;
-        const ballCenterY = boardOffsetY + row * cellSize + cellSize / 2;
+        // ボールの画面上の座標
+        const ballScreenX = rect.left + ballCanvasX * scaleX;
+        const ballScreenY = rect.top + ballCanvasY * scaleY;
         
-        // Canvas座標を画面座標に変換
-        const scaleX = rect.width / canvas.width;
-        const scaleY = rect.height / canvas.height;
+        // ページのスクロール位置を取得
+        const scrollX = window.pageXOffset || document.documentElement.scrollLeft;
+        const scrollY = window.pageYOffset || document.documentElement.scrollTop;
         
-        // ボールの画面上の位置
-        const ballScreenX = ballCenterX * scaleX;
-        const ballScreenY = ballCenterY * scaleY;
+        // 最終的なボール位置（スクロールを考慮）
+        const finalBallX = ballScreenX + scrollX;
+        const finalBallY = ballScreenY + scrollY;
         
-        console.log('座標変換詳細:', {
+        console.log('方向ボタン位置計算:', {
             gamePos: { row, col },
-            cellSize: cellSize,
-            boardOffset: { x: boardOffsetX, y: boardOffsetY },
-            ballCanvas: { x: ballCenterX, y: ballCenterY },
+            canvasSize: { width: this.canvas.width, height: this.canvas.height },
+            rectSize: { width: rect.width, height: rect.height },
+            rectPosition: { left: rect.left, top: rect.top },
+            ballCanvas: { x: ballCanvasX, y: ballCanvasY },
             scale: { x: scaleX, y: scaleY },
-            ballScreen: { x: ballScreenX, y: ballScreenY }
+            ballScreen: { x: ballScreenX, y: ballScreenY },
+            scroll: { x: scrollX, y: scrollY },
+            finalBall: { x: finalBallX, y: finalBallY }
         });
         
-        // Canvasコンテナに相対配置するための親要素を作成
-        const container = document.createElement('div');
-        container.className = 'direction-buttons-container';
-        container.style.cssText = `
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            z-index: 1000;
-        `;
-        
-        // Canvas要素の親に追加
-        const canvasContainer = canvas.parentElement;
-        canvasContainer.style.position = 'relative'; // 相対配置の基準を設定
-        canvasContainer.appendChild(container);
-        
-        // 背景オーバーレイ（キャンセル用）
+        // オーバーレイを作成（ボタン以外のクリックでキャンセル）
         const overlay = document.createElement('div');
         overlay.className = 'direction-overlay';
         overlay.style.cssText = `
@@ -414,7 +389,7 @@ class PentarollGame {
             height: 100vh;
             background: rgba(0, 0, 0, 0.3);
             z-index: 999;
-            pointer-events: auto;
+            backdrop-filter: blur(2px);
         `;
         
         overlay.addEventListener('click', (e) => {
@@ -425,7 +400,12 @@ class PentarollGame {
         
         document.body.appendChild(overlay);
         this.directionButtons.push(overlay);
-        this.directionButtons.push(container);
+        
+        // ボタン配置距離を計算（表示サイズに基づく）
+        const buttonDistance = Math.min(rect.width, rect.height) * 0.12; // 画面サイズの12%
+        const minDistance = 50; // 最小距離
+        const maxDistance = 80; // 最大距離
+        const actualDistance = Math.max(minDistance, Math.min(maxDistance, buttonDistance));
         
         // 方向ボタンを作成
         this.availableDirections.forEach(direction => {
@@ -443,11 +423,12 @@ class PentarollGame {
                 font-size: 18px;
                 font-weight: bold;
                 cursor: pointer;
-                z-index: 1001;
+                z-index: 1000;
                 box-shadow: 
-                    0 6px 20px rgba(102, 126, 234, 0.4),
-                    inset 0 2px 4px rgba(255, 255, 255, 0.3);
-                transition: all 0.2s ease;
+                    0 8px 32px rgba(102, 126, 234, 0.4),
+                    inset 0 2px 4px rgba(255, 255, 255, 0.3),
+                    inset 0 -2px 4px rgba(0, 0, 0, 0.2);
+                transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
                 display: flex;
                 align-items: center;
                 justify-content: center;
@@ -455,72 +436,84 @@ class PentarollGame {
                 -webkit-user-select: none;
                 -webkit-touch-callout: none;
                 touch-action: manipulation;
-                pointer-events: auto;
                 transform: scale(0.8);
-                animation: bounceIn 0.4s ease forwards;
+                animation: bounceIn 0.5s ease forwards;
             `;
             
-            // ボタンの位置を計算（Canvas内の相対位置）
+            // ボタンの位置を設定（修正版）
             const [dRow, dCol] = this.getDirectionVector(direction);
+            const btnX = finalBallX + dCol * actualDistance - 25; // ボタン幅の半分
+            const btnY = finalBallY + dRow * actualDistance - 25; // ボタン高さの半分
             
-            // ボタン配置距離を画面サイズに応じて調整
-            const minDistance = Math.min(cellSize * 0.8, 40);
-            const maxDistance = Math.min(cellSize * 1.2, 60);
-            const buttonDistance = Math.max(minDistance, maxDistance);
-            
-            // ボタンの位置（Canvas内の相対座標）
-            const btnX = ballScreenX + dCol * buttonDistance - 25; // ボタン幅の半分
-            const btnY = ballScreenY + dRow * buttonDistance - 25; // ボタン高さの半分
-            
-            // Canvas境界内に収まるよう調整
-            const canvasWidth = rect.width;
-            const canvasHeight = rect.height;
-            const adjustedBtnX = Math.max(5, Math.min(btnX, canvasWidth - 55));
-            const adjustedBtnY = Math.max(5, Math.min(btnY, canvasHeight - 55));
+            // 画面境界チェック（ビューポート基準）
+            const viewportWidth = window.innerWidth;
+            const viewportHeight = window.innerHeight;
+            const adjustedBtnX = Math.max(5, Math.min(btnX, viewportWidth - 55));
+            const adjustedBtnY = Math.max(5, Math.min(btnY, viewportHeight - 55));
             
             button.style.left = adjustedBtnX + 'px';
             button.style.top = adjustedBtnY + 'px';
             
-            console.log(`ボタン ${direction} 配置:`, {
+            console.log(`ボタン ${direction} 配置詳細:`, {
                 direction: [dRow, dCol],
-                distance: buttonDistance,
+                distance: actualDistance,
                 calculated: { x: btnX, y: btnY },
                 adjusted: { x: adjustedBtnX, y: adjustedBtnY },
-                canvas: { width: canvasWidth, height: canvasHeight }
+                viewport: { width: viewportWidth, height: viewportHeight }
             });
-            
-            // タッチ＆クリックイベント
-            const handleAction = (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                console.log('方向ボタン選択:', direction);
-                
-                // 視覚フィードバック
-                button.style.transform = 'scale(0.9)';
-                setTimeout(() => {
-                    this.selectDirection(direction);
-                }, 50);
-            };
-            
-            button.addEventListener('click', handleAction);
-            button.addEventListener('touchstart', handleAction);
             
             // ホバー効果
             button.addEventListener('mouseenter', () => {
                 button.style.transform = 'scale(1.1)';
-                button.style.boxShadow = '0 8px 25px rgba(102, 126, 234, 0.6), inset 0 2px 4px rgba(255, 255, 255, 0.4)';
+                button.style.background = 'linear-gradient(145deg, #764ba2 0%, #667eea 100%)';
+                button.style.boxShadow = `
+                    0 12px 40px rgba(102, 126, 234, 0.6),
+                    inset 0 2px 4px rgba(255, 255, 255, 0.4),
+                    inset 0 -2px 4px rgba(0, 0, 0, 0.3)
+                `;
             });
             
             button.addEventListener('mouseleave', () => {
                 button.style.transform = 'scale(1)';
-                button.style.boxShadow = '0 6px 20px rgba(102, 126, 234, 0.4), inset 0 2px 4px rgba(255, 255, 255, 0.3)';
+                button.style.background = 'linear-gradient(145deg, #667eea 0%, #764ba2 100%)';
+                button.style.boxShadow = `
+                    0 8px 32px rgba(102, 126, 234, 0.4),
+                    inset 0 2px 4px rgba(255, 255, 255, 0.3),
+                    inset 0 -2px 4px rgba(0, 0, 0, 0.2)
+                `;
             });
             
-            container.appendChild(button);
+            // クリックイベント
+            button.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('矢印ボタンクリック:', direction); // デバッグ用
+                
+                // クリックアニメーション
+                button.style.transform = 'scale(0.95)';
+                setTimeout(() => {
+                    this.selectDirection(direction);
+                }, 100);
+            });
+
+            // タッチイベントを追加
+            button.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('矢印ボタンタッチ:', direction); // デバッグ用
+                
+                // タッチアニメーション
+                button.style.transform = 'scale(0.95)';
+                setTimeout(() => {
+                    this.selectDirection(direction);
+                }, 100);
+            });
+            
+            document.body.appendChild(button);
             this.directionButtons.push(button);
         });
         
-        // CSSアニメーションを追加（一度だけ）
+        // CSSアニメーションを追加
         if (!document.getElementById('directionButtonStyles')) {
             const style = document.createElement('style');
             style.id = 'directionButtonStyles';
@@ -528,58 +521,34 @@ class PentarollGame {
                 @keyframes bounceIn {
                     0% {
                         opacity: 0;
-                        transform: scale(0.3);
+                        transform: scale(0.3) rotate(180deg);
                     }
                     50% {
                         opacity: 1;
-                        transform: scale(1.1);
+                        transform: scale(1.05) rotate(0deg);
+                    }
+                    70% {
+                        transform: scale(0.9) rotate(0deg);
                     }
                     100% {
                         opacity: 1;
-                        transform: scale(1);
+                        transform: scale(1) rotate(0deg);
                     }
                 }
                 
+                @keyframes pulse {
+                    0% { box-shadow: 0 8px 32px rgba(102, 126, 234, 0.4); }
+                    50% { box-shadow: 0 8px 32px rgba(102, 126, 234, 0.8); }
+                    100% { box-shadow: 0 8px 32px rgba(102, 126, 234, 0.4); }
+                }
+                
                 .direction-btn:active {
-                    transform: scale(0.9) !important;
+                    transform: scale(0.95) !important;
                     transition: transform 0.1s ease;
                 }
             `;
             document.head.appendChild(style);
         }
-    }
-
-    // 方向記号を取得
-    getDirectionSymbol(direction) {
-        const symbols = {
-            'Up': '↑',
-            'Down': '↓',
-            'Left': '←',
-            'Right': '→',
-            'UpLeft': '↖',
-            'UpRight': '↗',
-            'DownLeft': '↙',
-            'DownRight': '↘'
-        };
-        return symbols[direction] || '?';
-    }
-
-    // 方向ボタンを非表示
-    hideDirectionButtons() {
-        this.removeDirectionButtons();
-        this.showingArrows = false;
-        this.selectedPosition = null;
-        this.availableDirections = [];
-    }
-
-    // 方向ボタンを削除
-    removeDirectionButtons() {
-        this.directionButtons.forEach(button => {
-            if (button && button.parentNode) {
-                button.parentNode.removeChild(button);
-            }
-        });
-        this.directionButtons = [];
     }
 
     // 方向選択（修正版）
@@ -1269,6 +1238,42 @@ class PentarollGame {
         this.drawBoard();
         
         console.log('ゲームリセット完了'); // デバッグ用
+    }
+
+    // 方向記号を取得
+    getDirectionSymbol(direction) {
+        const symbols = {
+            'Up': '↑',
+            'Down': '↓',
+            'Left': '←',
+            'Right': '→',
+            'UpLeft': '↖',
+            'UpRight': '↗',
+            'DownLeft': '↙',
+            'DownRight': '↘'
+        };
+        return symbols[direction] || '?';
+    }
+
+    // 方向ボタンを非表示
+    hideDirectionButtons() {
+        this.removeDirectionButtons();
+        this.showingArrows = false;
+        this.selectedPosition = null;
+        this.availableDirections = [];
+        
+        // 通常のボードを再描画
+        this.drawBoard();
+    }
+
+    // 方向ボタンを削除
+    removeDirectionButtons() {
+        this.directionButtons.forEach(button => {
+            if (button && button.parentNode) {
+                button.parentNode.removeChild(button);
+            }
+        });
+        this.directionButtons = [];
     }
 }
 
