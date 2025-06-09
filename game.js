@@ -635,6 +635,7 @@ class PentarollGame {
             }
         });
         
+        
         // 新しいボールを配置
         this.board[startRow][startCol] = this.currentPlayer;
         
