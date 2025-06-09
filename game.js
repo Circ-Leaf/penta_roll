@@ -348,48 +348,62 @@ class PentarollGame {
         this.showingArrows = true;
         this.removeDirectionButtons(); // 既存のボタンを削除
         
-        // ボールの画面上の位置を計算（修正版）
-        const rect = this.canvas.getBoundingClientRect();
+        // Canvas要素の詳細情報を取得
+        const canvas = this.canvas;
+        const rect = canvas.getBoundingClientRect();
         
-        // Canvas内部座標系でのボール位置を計算
-        const ballCanvasX = this.boardOffset.x + col * this.cellSize + this.cellSize / 2;
-        const ballCanvasY = this.boardOffset.y + row * this.cellSize + this.cellSize / 2;
-        
-        // Canvas座標を画面座標に変換（より正確な変換）
-        const canvasWidth = this.canvas.width;
-        const canvasHeight = this.canvas.height;
-        
-        // Canvas要素の実際の表示サイズ
-        const displayWidth = rect.width;
-        const displayHeight = rect.height;
-        
-        // スケール比率を計算
-        const scaleX = displayWidth / canvasWidth;
-        const scaleY = displayHeight / canvasHeight;
-        
-        // 画面座標を計算
-        const ballX = rect.left + (ballCanvasX * scaleX);
-        const ballY = rect.top + (ballCanvasY * scaleY);
-        
-        // ページスクロール位置を考慮
-        const scrollX = window.pageXOffset || document.documentElement.scrollLeft;
-        const scrollY = window.pageYOffset || document.documentElement.scrollTop;
-        
-        const finalBallX = ballX + scrollX;
-        const finalBallY = ballY + scrollY;
-        
-        console.log('Direction button positioning:', {
+        console.log('Canvas詳細情報:', {
             rect: rect,
-            canvasSize: { width: canvasWidth, height: canvasHeight },
-            displaySize: { width: displayWidth, height: displayHeight },
-            scale: { x: scaleX, y: scaleY },
-            ballCanvas: { x: ballCanvasX, y: ballCanvasY },
-            ballScreen: { x: ballX, y: ballY },
-            finalBall: { x: finalBallX, y: finalBallY },
-            scroll: { x: scrollX, y: scrollY }
+            canvasSize: { width: canvas.width, height: canvas.height },
+            style: { width: canvas.style.width, height: canvas.style.height },
+            computed: getComputedStyle(canvas)
         });
         
-        // オーバーレイを作成（ボタン以外のクリックでキャンセル）
+        // ゲーム座標からCanvas座標へ変換
+        const cellSize = this.cellSize;
+        const boardOffsetX = this.boardOffset.x;
+        const boardOffsetY = this.boardOffset.y;
+        
+        // ボールの中心位置（Canvas座標系）
+        const ballCenterX = boardOffsetX + col * cellSize + cellSize / 2;
+        const ballCenterY = boardOffsetY + row * cellSize + cellSize / 2;
+        
+        // Canvas座標を画面座標に変換
+        const scaleX = rect.width / canvas.width;
+        const scaleY = rect.height / canvas.height;
+        
+        // ボールの画面上の位置
+        const ballScreenX = ballCenterX * scaleX;
+        const ballScreenY = ballCenterY * scaleY;
+        
+        console.log('座標変換詳細:', {
+            gamePos: { row, col },
+            cellSize: cellSize,
+            boardOffset: { x: boardOffsetX, y: boardOffsetY },
+            ballCanvas: { x: ballCenterX, y: ballCenterY },
+            scale: { x: scaleX, y: scaleY },
+            ballScreen: { x: ballScreenX, y: ballScreenY }
+        });
+        
+        // Canvasコンテナに相対配置するための親要素を作成
+        const container = document.createElement('div');
+        container.className = 'direction-buttons-container';
+        container.style.cssText = `
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1000;
+        `;
+        
+        // Canvas要素の親に追加
+        const canvasContainer = canvas.parentElement;
+        canvasContainer.style.position = 'relative'; // 相対配置の基準を設定
+        canvasContainer.appendChild(container);
+        
+        // 背景オーバーレイ（キャンセル用）
         const overlay = document.createElement('div');
         overlay.className = 'direction-overlay';
         overlay.style.cssText = `
@@ -400,7 +414,7 @@ class PentarollGame {
             height: 100vh;
             background: rgba(0, 0, 0, 0.3);
             z-index: 999;
-            backdrop-filter: blur(2px);
+            pointer-events: auto;
         `;
         
         overlay.addEventListener('click', (e) => {
@@ -411,6 +425,7 @@ class PentarollGame {
         
         document.body.appendChild(overlay);
         this.directionButtons.push(overlay);
+        this.directionButtons.push(container);
         
         // 方向ボタンを作成
         this.availableDirections.forEach(direction => {
@@ -419,21 +434,20 @@ class PentarollGame {
             button.className = 'direction-btn';
             button.style.cssText = `
                 position: absolute;
-                width: 60px;
-                height: 60px;
+                width: 50px;
+                height: 50px;
                 border: none;
                 border-radius: 50%;
                 background: linear-gradient(145deg, #667eea 0%, #764ba2 100%);
                 color: #ffffff;
-                font-size: 20px;
+                font-size: 18px;
                 font-weight: bold;
                 cursor: pointer;
-                z-index: 1000;
+                z-index: 1001;
                 box-shadow: 
-                    0 8px 32px rgba(102, 126, 234, 0.4),
-                    inset 0 2px 4px rgba(255, 255, 255, 0.3),
-                    inset 0 -2px 4px rgba(0, 0, 0, 0.2);
-                transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                    0 6px 20px rgba(102, 126, 234, 0.4),
+                    inset 0 2px 4px rgba(255, 255, 255, 0.3);
+                transition: all 0.2s ease;
                 display: flex;
                 align-items: center;
                 justify-content: center;
@@ -441,85 +455,72 @@ class PentarollGame {
                 -webkit-user-select: none;
                 -webkit-touch-callout: none;
                 touch-action: manipulation;
+                pointer-events: auto;
                 transform: scale(0.8);
-                animation: bounceIn 0.5s ease forwards;
+                animation: bounceIn 0.4s ease forwards;
             `;
             
-            // ボタンの位置を設定（修正版）
+            // ボタンの位置を計算（Canvas内の相対位置）
             const [dRow, dCol] = this.getDirectionVector(direction);
             
-            // より大きな距離でボタンを配置（スマホでタッチしやすくするため）
-            const buttonDistance = Math.min(80, Math.min(displayWidth, displayHeight) * 0.15);
+            // ボタン配置距離を画面サイズに応じて調整
+            const minDistance = Math.min(cellSize * 0.8, 40);
+            const maxDistance = Math.min(cellSize * 1.2, 60);
+            const buttonDistance = Math.max(minDistance, maxDistance);
             
-            const btnX = finalBallX + dCol * buttonDistance - 30; // ボタン幅の半分
-            const btnY = finalBallY + dRow * buttonDistance - 30; // ボタン高さの半分
+            // ボタンの位置（Canvas内の相対座標）
+            const btnX = ballScreenX + dCol * buttonDistance - 25; // ボタン幅の半分
+            const btnY = ballScreenY + dRow * buttonDistance - 25; // ボタン高さの半分
             
-            // 画面外に出ないように調整
-            const adjustedBtnX = Math.max(10, Math.min(btnX, window.innerWidth - 70));
-            const adjustedBtnY = Math.max(10, Math.min(btnY, window.innerHeight - 70));
+            // Canvas境界内に収まるよう調整
+            const canvasWidth = rect.width;
+            const canvasHeight = rect.height;
+            const adjustedBtnX = Math.max(5, Math.min(btnX, canvasWidth - 55));
+            const adjustedBtnY = Math.max(5, Math.min(btnY, canvasHeight - 55));
             
             button.style.left = adjustedBtnX + 'px';
             button.style.top = adjustedBtnY + 'px';
             
-            console.log(`Button ${direction}:`, {
+            console.log(`ボタン ${direction} 配置:`, {
                 direction: [dRow, dCol],
                 distance: buttonDistance,
                 calculated: { x: btnX, y: btnY },
-                adjusted: { x: adjustedBtnX, y: adjustedBtnY }
+                adjusted: { x: adjustedBtnX, y: adjustedBtnY },
+                canvas: { width: canvasWidth, height: canvasHeight }
             });
+            
+            // タッチ＆クリックイベント
+            const handleAction = (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('方向ボタン選択:', direction);
+                
+                // 視覚フィードバック
+                button.style.transform = 'scale(0.9)';
+                setTimeout(() => {
+                    this.selectDirection(direction);
+                }, 50);
+            };
+            
+            button.addEventListener('click', handleAction);
+            button.addEventListener('touchstart', handleAction);
             
             // ホバー効果
             button.addEventListener('mouseenter', () => {
                 button.style.transform = 'scale(1.1)';
-                button.style.background = 'linear-gradient(145deg, #764ba2 0%, #667eea 100%)';
-                button.style.boxShadow = `
-                    0 12px 40px rgba(102, 126, 234, 0.6),
-                    inset 0 2px 4px rgba(255, 255, 255, 0.4),
-                    inset 0 -2px 4px rgba(0, 0, 0, 0.3)
-                `;
+                button.style.boxShadow = '0 8px 25px rgba(102, 126, 234, 0.6), inset 0 2px 4px rgba(255, 255, 255, 0.4)';
             });
             
             button.addEventListener('mouseleave', () => {
                 button.style.transform = 'scale(1)';
-                button.style.background = 'linear-gradient(145deg, #667eea 0%, #764ba2 100%)';
-                button.style.boxShadow = `
-                    0 8px 32px rgba(102, 126, 234, 0.4),
-                    inset 0 2px 4px rgba(255, 255, 255, 0.3),
-                    inset 0 -2px 4px rgba(0, 0, 0, 0.2)
-                `;
+                button.style.boxShadow = '0 6px 20px rgba(102, 126, 234, 0.4), inset 0 2px 4px rgba(255, 255, 255, 0.3)';
             });
             
-            // クリックイベント（修正版）
-            button.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                console.log('矢印ボタンクリック:', direction); // デバッグ用
-                
-                // クリックアニメーション
-                button.style.transform = 'scale(0.95)';
-                setTimeout(() => {
-                    this.selectDirection(direction);
-                }, 100);
-            });
-
-            // タッチイベントを追加
-            button.addEventListener('touchstart', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                console.log('矢印ボタンタッチ:', direction); // デバッグ用
-                
-                // タッチアニメーション
-                button.style.transform = 'scale(0.95)';
-                setTimeout(() => {
-                    this.selectDirection(direction);
-                }, 100);
-            });
-            
-            document.body.appendChild(button);
+            container.appendChild(button);
             this.directionButtons.push(button);
         });
         
-        // CSSアニメーションを追加
+        // CSSアニメーションを追加（一度だけ）
         if (!document.getElementById('directionButtonStyles')) {
             const style = document.createElement('style');
             style.id = 'directionButtonStyles';
@@ -527,29 +528,20 @@ class PentarollGame {
                 @keyframes bounceIn {
                     0% {
                         opacity: 0;
-                        transform: scale(0.3) rotate(180deg);
+                        transform: scale(0.3);
                     }
                     50% {
                         opacity: 1;
-                        transform: scale(1.05) rotate(0deg);
-                    }
-                    70% {
-                        transform: scale(0.9) rotate(0deg);
+                        transform: scale(1.1);
                     }
                     100% {
                         opacity: 1;
-                        transform: scale(1) rotate(0deg);
+                        transform: scale(1);
                     }
                 }
                 
-                @keyframes pulse {
-                    0% { box-shadow: 0 8px 32px rgba(102, 126, 234, 0.4); }
-                    50% { box-shadow: 0 8px 32px rgba(102, 126, 234, 0.8); }
-                    100% { box-shadow: 0 8px 32px rgba(102, 126, 234, 0.4); }
-                }
-                
                 .direction-btn:active {
-                    transform: scale(0.95) !important;
+                    transform: scale(0.9) !important;
                     transition: transform 0.1s ease;
                 }
             `;
