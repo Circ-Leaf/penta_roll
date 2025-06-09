@@ -157,12 +157,14 @@ body {
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
-.player-ball.red {
-    background: linear-gradient(45deg, #FF6B6B, #EE5A52);
+.player-ball.white {
+    background: linear-gradient(45deg, #FFFFFF, #F5F5F5);
+    border: 2px solid #E0E0E0;
 }
 
-.player-ball.blue {
-    background: linear-gradient(45deg, #4ECDC4, #44A08D);
+.player-ball.black {
+    background: linear-gradient(45deg, #424242, #212121);
+    border: 2px solid #000000;
 }
 
 .turn-indicator {

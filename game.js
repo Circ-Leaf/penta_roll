@@ -121,20 +121,20 @@ class PentarollGame {
         return (row === 0 || row === 5) && (col === 0 || col === 5);
     }
 
-    // 指定した位置から可能な方向を取得（修正版）
+    // 指定した位置から可能な方向を取得（斜め移動無効化版）
     getAvailableDirections(row, col) {
         const directions = [];
         
         if (this.isCornerPosition(row, col)) {
-            // 角の場合は3方向（直線2方向＋斜め1方向）
+            // 角の場合は2方向（直線のみ、斜めは無効）
             if (row === 0 && col === 0) {
-                directions.push('Right', 'Down', 'DownRight');
+                directions.push('Right', 'Down');
             } else if (row === 0 && col === 5) {
-                directions.push('Left', 'Down', 'DownLeft');  
+                directions.push('Left', 'Down');  
             } else if (row === 5 && col === 0) {
-                directions.push('Right', 'Up', 'UpRight');
+                directions.push('Right', 'Up');
             } else if (row === 5 && col === 5) {
-                directions.push('Left', 'Up', 'UpLeft');
+                directions.push('Left', 'Up');
             }
         } else if (row === 0) {
             // 上端：下方向のみ
@@ -832,13 +832,13 @@ class PentarollGame {
         ctx.fillRect(this.boardOffset.x + 5, this.boardOffset.y + 5, 
                     this.cellSize * 6, this.cellSize * 6);
         
-        // ボードベース
-        ctx.fillStyle = '#8B4513';
+        // ボードベース（水色に変更）
+        ctx.fillStyle = '#00BFFF';
         ctx.fillRect(this.boardOffset.x, this.boardOffset.y, 
                     this.cellSize * 6, this.cellSize * 6);
         
-        // グリッド線
-        ctx.strokeStyle = '#654321';
+        // グリッド線（水色に合わせて濃い青に変更）
+        ctx.strokeStyle = '#0080CC';
         ctx.lineWidth = 2;
         
         for (let i = 0; i <= 6; i++) {
@@ -893,15 +893,15 @@ class PentarollGame {
         );
         
         if (player === 1) {
-            // 赤いボール
-            gradient.addColorStop(0, '#FF8A80');
-            gradient.addColorStop(0.7, '#FF5722');
-            gradient.addColorStop(1, '#D32F2F');
+            // 白いボール
+            gradient.addColorStop(0, '#FFFFFF');
+            gradient.addColorStop(0.7, '#F5F5F5');
+            gradient.addColorStop(1, '#E0E0E0');
         } else {
-            // 緑のボール
-            gradient.addColorStop(0, '#A5D6A7');
-            gradient.addColorStop(0.7, '#4CAF50');
-            gradient.addColorStop(1, '#2E7D32');
+            // 黒いボール
+            gradient.addColorStop(0, '#424242');
+            gradient.addColorStop(0.7, '#212121');
+            gradient.addColorStop(1, '#000000');
         }
         
         // ボール本体
@@ -911,7 +911,7 @@ class PentarollGame {
         ctx.fill();
         
         // ハイライト
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+        ctx.fillStyle = player === 1 ? 'rgba(255, 255, 255, 0.6)' : 'rgba(255, 255, 255, 0.3)';
         ctx.beginPath();
         ctx.arc(x - radius * 0.3, y - radius * 0.3, radius * 0.3, 0, Math.PI * 2);
         ctx.fill();
@@ -965,12 +965,12 @@ class PentarollGame {
         
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         
-        // ボード描画
-        ctx.fillStyle = '#8B4513';
+        // ボード描画（水色に変更）
+        ctx.fillStyle = '#00BFFF';
         ctx.fillRect(boardOffset.x, boardOffset.y, cellSize * 6, cellSize * 6);
         
-        // グリッド
-        ctx.strokeStyle = '#654321';
+        // グリッド（水色に合わせて濃い青に変更）
+        ctx.strokeStyle = '#0080CC';
         ctx.lineWidth = 1;
         for (let i = 0; i <= 6; i++) {
             ctx.beginPath();
@@ -998,11 +998,15 @@ class PentarollGame {
                     );
                     
                     if (this.board[row][col] === 1) {
-                        gradient.addColorStop(0, '#FF8A80');
-                        gradient.addColorStop(1, '#D32F2F');
+                        // 白いボール
+                        gradient.addColorStop(0, '#FFFFFF');
+                        gradient.addColorStop(0.7, '#F5F5F5');
+                        gradient.addColorStop(1, '#E0E0E0');
                     } else {
-                        gradient.addColorStop(0, '#A5D6A7');
-                        gradient.addColorStop(1, '#2E7D32');
+                        // 黒いボール
+                        gradient.addColorStop(0, '#424242');
+                        gradient.addColorStop(0.7, '#212121');
+                        gradient.addColorStop(1, '#000000');
                     }
                     
                     ctx.fillStyle = gradient;
